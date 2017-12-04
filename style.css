@@ -1,0 +1,35 @@
+body {
+  background: hsl(220, 13%, 14%);
+  font-family: arial;
+  color: #C0C5CE;
+  margin: 20px;
+  font-size: 16px;
+}
+.bounds {
+  outline: 2px solid #C0C5CE;
+  float: left;
+  background: hsl(220, 13%, 18%);
+}
+.sidebar {
+  width: 200px;
+  float: left;
+  margin-right: 20px;
+}
+.player {
+  line-height: 2em;
+}
+.player.winner::before {
+  content: '👑';
+}
+.color {
+  position: relative;
+  top: -0.1em;
+  display: inline-block;
+  vertical-align: middle;
+  width: 0.5em;
+  height: 1.5em;
+}
+.score {
+  float: right;
+  font-weight: bold;
+}
