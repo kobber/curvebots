@@ -2469,14 +2469,14 @@ declare module 'paper' {
      * @param offset - the offset at which to split the path as a number between 0 and path.length
      * Returns the newly created path after splitting, if any
      */
-    split(offset: number): Path;
+    splitAt(offset: number): Path;
 
     /**
      * Splits the path at the given curve location. After splitting, the path will be open. If the path was open already, splitting will result in two paths.
      * @param location - the curve location at which to split the path
      * Returns the newly created path after splitting, if any
      */
-    split(location: CurveLocation): Path;
+    splitAt(location: CurveLocation): Path;
 
     /**
      * Splits the path at the given curve index and parameter. After splitting, the path will be open. If the path was open already, splitting will result in two paths.
