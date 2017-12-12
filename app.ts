@@ -1,3 +1,16 @@
+/*
+TODO:
+[x] Start new workers each round
+[x] Kill workers when a round ends
+[x] Wait for curve command each update step
+[x] Send paper data to worker for reconstruction
+[ ] Make extendable bot class for others to use
+[ ] Send more useful information to bots.
+    - They currently only get the entire paper state.
+    - They need to know their own position and direction
+    - They need to know other players position and direction, not only their curves
+*/
+
 import * as Paper from 'paper';
 declare const paper:typeof Paper;
 
@@ -5,7 +18,7 @@ const DEBUG = {
   step: false
 };
 
-// Item types
+// Entity types
 enum TYPE {
   curve
 }
@@ -42,6 +55,7 @@ class Game {
       player.name = 'Player ' + player.id;
       player.score = 0;
     }
+    this.newRound();
     this.sidebar = new Sidebar(this);
     this.sidebar.render();
   }
@@ -50,7 +64,6 @@ class Game {
       players: this.players,
       game: this
     });
-    game.round.start();
   }
 }
 
@@ -87,18 +100,31 @@ class Round {
   game:Game;
   players:Player[];
   paused:boolean;
+  ended:boolean;
   constructor(opts:{ players:Player[], game:Game }) {
     this.curves = [];
     this.game = opts.game;
     this.players = opts.players;
+
+    let readyCurveCount = 0;
+
     for (const player of opts.players) {
-      player.id = opts.players.indexOf(player);
-      this.curves.push(new Curve({
+      const curve = new Curve({
         pos: this.randomPosition(),
         player: player,
         round: this
-      }));
+      });
+      curve.onReady(() => {
+
+        readyCurveCount++;
+        if (readyCurveCount === this.players.length) {
+          // Start round
+          this.loop();
+        }
+      });
+      this.curves.push(curve);
     }
+
     if (DEBUG.step) {
       document.addEventListener('keydown', (event) => {
         const keyName = event.key;
@@ -110,11 +136,24 @@ class Round {
   }
   end() {
     this.paused = true;
+    if (this.ended) {
+      // Round already ended
+      return;
+    }
+    this.ended = true;
+
     // Clear all paths
     paper.project.clear();
+
     // start new round
     const pointsToWin = game.players.length * 10;
     const players = this.players;
+
+    // Kill all bots
+    for (const curve of this.curves) {
+      curve.kill();
+    }
+
     if (players[0].score >= pointsToWin && players[0].score >= players[1].score + 2) {
       // Game end
       players[0].winner = true;
@@ -160,17 +199,23 @@ class Round {
       y: (Math.random() * 0.70 + 0.15) * paper.view.bounds.height
     });
   }
-  start() {
-    this.loop();
-  }
   loop() {
+    let curvecommandcount = 0;
     for (const curve of this.curves) {
-      curve.update(this.game.round);
-      curve.render();
-    }
-    paper.view.draw();
-    if (!this.paused && !DEBUG.step) {
-      window.requestAnimationFrame(() => this.loop());
+      // Ask player to give command
+      curve.getCommand((command) => {
+        curvecommandcount++;
+        // Callback
+        curve.update(command);
+        curve.render();
+        // If all curves have given their command
+        if (curvecommandcount === this.curves.length) {
+          paper.view.draw();
+          if (!this.paused && !DEBUG.step) {
+            window.requestAnimationFrame(() => this.loop());
+          }
+        }
+      });
     }
   }
 }
@@ -181,12 +226,12 @@ class Player {
   score:number;
   name:string;
   color:Paper.Color;
-  controller:(curve:Curve) => -1 | 1 | 0;
+  botFileName: string;
   constructor(opts:{
-    controller:(curve:Curve) => -1 | 1 | 0
+    file:string;
   }) {
     this.winner = false;
-    this.controller = opts.controller;
+    this.botFileName = opts.file;
   }
 }
 
@@ -224,7 +269,12 @@ class Curve {
   round:Round;
   collide:boolean;
   alive:boolean;
-  lastCommand: -1 | 0 | 1 | null;
+  ready: boolean;
+  private worker: Worker;
+  private onReadyCallbacks: Function[];
+  private commandCallbacks: {[id:number]: Function};
+  private commandId: number;
+  private lastCommand: curveCommand | null;
   constructor(opts:{pos:{x:number, y:number}, player:Player, round:Round}) {
     this.speed = Game.params.speed;
     this.round = opts.round;
@@ -236,6 +286,11 @@ class Curve {
     this.draw = true;
     this.collide = true;
     this.holeSpacing = this.getRandomHoleSpacing();
+    this.commandId = 0;
+    this.worker = new Worker(this.player.botFileName);
+    this.ready = false;
+    this.onReadyCallbacks = [];
+    this.commandCallbacks = {};
 
     this.path = new paper.CompoundPath({
       strokeColor: this.player.color,
@@ -254,6 +309,54 @@ class Curve {
     });
 
     this.startDrawing();
+
+    // Listen for events from worker
+    this.worker.addEventListener('message', (e: WorkerMessage) => {
+      switch (e.data.type) {
+        case WorkerMessageType.READY:
+          this.ready = true;
+          for (const callback of this.onReadyCallbacks) {
+            callback();
+          }
+          break;
+        case WorkerMessageType.UPDATE:
+          this.commandCallbacks[e.data.id](e.data.command);
+          delete this.commandCallbacks[e.data.id];
+          break;
+      }
+    }, false);
+
+    this.postMessage({
+      type: AppMessageType.INIT,
+      width: 400,
+      height: 400
+    });
+  }
+
+  postMessage(message: AppMessageData) {
+    this.worker.postMessage(message);
+  }
+
+  onReady(callback: Function) {
+    if (this.ready) {
+      callback();
+    } else {
+      this.onReadyCallbacks.push(callback);
+    }
+  }
+
+  getCommand(callback:(command:curveCommand) => void) {
+    const id = this.commandId++;
+    this.commandCallbacks[id] = callback;
+    this.postMessage({
+      type: AppMessageType.UPDATE,
+      paperState: paper.project.exportJSON(),
+      id: id
+    });
+  }
+
+  kill() {
+    this.worker.terminate();
   }
 
   getRandomHoleSpacing() {
@@ -266,9 +369,11 @@ class Curve {
     this.alive = false;
     this.round.checkRoundEnd();
   }
+
   render() {
     this.dot.position = this.pos;
   }
+
   checkCollision(point:Paper.Point):boolean {
     if (!this.collide) {
       return false;
@@ -325,6 +430,7 @@ class Curve {
 
     return false;
   }
+
   startDrawing() {
     this.draw = true;
     this.collide = true;
@@ -332,11 +438,13 @@ class Curve {
       segments: [this.pos],
     }));
   }
+
   stopDrawing() {
     this.draw = false;
     this.collide = false;
   }
-  update(round:Round) {
+
+  update(command:curveCommand) {
     if (!this.alive) {
       return;
     }
@@ -357,7 +465,6 @@ class Curve {
     }
 
     // Calculate new position
-    const command = this.player.controller(this);
     const r = Game.params.radius;
     const s = this.speed;
     const deltaAngle = Direction.radToDeg(Math.acos(1 - (s * s) / ( 2 * r * r))) * command;
@@ -382,7 +489,6 @@ class Curve {
       if (command === 0) {
         // move point instad of adding new one
         lastPath.lastSegment.remove();
-        lastPath.lineTo(this.pos);
       }
   
       // If curving
@@ -429,14 +535,17 @@ function keyboardBot(key1:string, key2:string) {
 }
 
 const player1 = new Player({
-  controller: keyboardBot('ArrowRight', 'ArrowLeft')
+  file: 'bots/bot.js'
 });
 const player2 = new Player({
-  controller: vacuumBot()
+  file: 'bots/bot.js'
 });
-const player3 = new Player({
-  controller: vacuumBot()
-});
+// const player2 = new Player({
+//   controller: vacuumBot()
+// });
+// const player3 = new Player({
+//   controller: vacuumBot()
+// });
 
 
 class Keyboard {
@@ -458,9 +567,7 @@ const keyboard = new Keyboard();
 const game = new Game({
   players: [
     player1,
-    player2,
-    player3
+    // player2,
+    // player3
   ]
 });
-
-game.newRound();

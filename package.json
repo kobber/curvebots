@@ -3,11 +3,15 @@
   "version": "1.0.0",
   "main": "app.js",
   "dependencies": {
+    "http-server": "^0.10.0",
     "paper": "^0.11.5",
     "typescript": "^2.6.2"
   },
   "scripts": {
     "build": "tsc",
-    "build:watch": "tsc --watch"
+    "build:bots": "tsc --project bots",
+    "build:bots:watch": "tsc --watch --project bots",
+    "build:watch": "tsc --watch",
+    "serve": "http-server"
   }
 }

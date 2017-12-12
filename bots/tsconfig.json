@@ -4,10 +4,14 @@
     "module": "es6",
     "strictNullChecks": true,
     "sourceMap": true,
-    "pretty": true
+    "lib": [
+      "webworker",
+      "es5",
+      "scripthost"
+    ]
   },
-  "exclude": [
-    "node_modules",
-    "bots"
+  "files": [
+    "bot.ts",
+    "../messages.d.ts"
   ]
 }
