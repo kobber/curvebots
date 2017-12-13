@@ -12,6 +12,7 @@
   },
   "files": [
     "bot.ts",
+    "paper.d.ts",
     "../messages.d.ts"
   ]
 }

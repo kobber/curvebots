@@ -1,5 +1,7 @@
 self.importScripts('../node_modules/paper/dist/paper-core.min.js');
-declare const paper: any;
+import * as Paper from 'paper';
+import { AppMessage, AppMessageType, WorkerMessageType, curveCommand, WorkerMessageData } from '../messages';
+declare const paper: typeof Paper;
 
 paper.install(this);
 
@@ -19,7 +21,12 @@ abstract class Bot {
         case AppMessageType.UPDATE:
           paper.project.clear();
           paper.project.importJSON(e.data.paperState);
-          this.update(e.data.id);
+          this.update(e.data.id, {
+            paper: paper,
+            curves: e.data.curves,
+            pos: e.data.pos,
+            direction: e.data.direction,
+          });
           break;
         
         default:
@@ -37,7 +44,12 @@ abstract class Bot {
   postMessage(message:WorkerMessageData) {
     postMessage(message);
   }
-  abstract update(id:number);
+  abstract update(id:number, data:{
+    paper: typeof Paper,
+    curves: Array<any>,
+    pos: Paper.Point,
+    direction: any,
+  });
 }
 
 class MyBot extends Bot {
@@ -46,12 +58,31 @@ class MyBot extends Bot {
     super();
     this.count = 0;
   }
-  update(id:number) {
-    let command: curveCommand = 0;
-    if (this.count > 10) {
+  update(id: number, data:{
+    paper: typeof Paper,
+    curves: Array<any>,
+    pos: Paper.Point,
+    direction: any
+  }) {
+    const shapes = paper.project.getItems({ data: { type: 0 } });
+    let command:curveCommand = 0;
+    
+    // Do some collision checking
+    // Check if we can go straight
+    const newPoint = new paper.Point(data.pos.x + (34 * data.direction.x), data.pos.y + (34 * data.direction.y);
+    const collisionline = new paper.Path([
+      data.pos, newPoint
+    ]);
+    if (!paper.view.bounds.contains(newPoint)) {
       command = -1;
     }
-    this.count++;
+    for (const shape of shapes) {
+      if (collisionline.intersects(shape)) {
+        command = -1;
+      }
+    }
+    collisionline.remove();
+
     this.sendCommand(id, command);
     if (this.count > 20) {
       this.count = 0;

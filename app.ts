@@ -12,6 +12,7 @@ TODO:
 */
 
 import * as Paper from 'paper';
+import { WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData } from './messages';
 declare const paper:typeof Paper;
 
 const DEBUG = {
@@ -347,9 +348,20 @@ class Curve {
 
   getCommand(callback:(command:curveCommand) => void) {
     const id = this.commandId++;
+    const curves:any[] = [];
+    for (const curve of this.round.curves) {
+      curves.push({
+        pos: curve.pos,
+        direction: curve.direction
+      });
+    }
     this.commandCallbacks[id] = callback;
+    
     this.postMessage({
       type: AppMessageType.UPDATE,
+      pos: this.pos,
+      direction: this.direction,
+      curves: curves,
       paperState: paper.project.exportJSON(),
       id: id
     });

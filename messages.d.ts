@@ -1,3 +1,9 @@
+import * as Paper from "paper";
+
+declare const enum TYPE {
+  curve = 'curve'
+}
+
 // Other types
 type curveCommand = 1 | 0 | -1;
 
@@ -37,6 +43,9 @@ interface AppMessage_init {
 interface AppMessage_update {
   type: AppMessageType.UPDATE,
   paperState: string,
+  curves: Array<any>,
+  pos: Paper.Point,
+  direction: any,
   id: number
 }
 

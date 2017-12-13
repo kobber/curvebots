@@ -25,7 +25,12 @@ var Bot = /** @class */ (function () {
                 case "update" /* UPDATE */:
                     paper.project.clear();
                     paper.project.importJSON(e.data.paperState);
-                    _this.update(e.data.id);
+                    _this.update(e.data.id, {
+                        paper: paper,
+                        curves: e.data.curves,
+                        pos: e.data.pos,
+                        direction: e.data.direction,
+                    });
                     break;
                 default:
                     break;
@@ -51,12 +56,25 @@ var MyBot = /** @class */ (function (_super) {
         _this.count = 0;
         return _this;
     }
-    MyBot.prototype.update = function (id) {
+    MyBot.prototype.update = function (id, data) {
+        var shapes = paper.project.getItems({ data: { type: 0 } });
         var command = 0;
-        if (this.count > 10) {
+        // Do some collision checking
+        // Check if we can go straight
+        var newPoint = new paper.Point(data.pos.x + (34 * data.direction.x), data.pos.y + (34 * data.direction.y));
+        var collisionline = new paper.Path([
+            data.pos, newPoint
+        ]);
+        if (!paper.view.bounds.contains(newPoint)) {
             command = -1;
         }
-        this.count++;
+        for (var _i = 0, shapes_1 = shapes; _i < shapes_1.length; _i++) {
+            var shape = shapes_1[_i];
+            if (collisionline.intersects(shape)) {
+                command = -1;
+            }
+        }
+        collisionline.remove();
         this.sendCommand(id, command);
         if (this.count > 20) {
             this.count = 0;
