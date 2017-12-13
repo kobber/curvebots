@@ -77,8 +77,9 @@ class MyBot extends Bot {
     direction: any
   }) {
     let curve = data.curves.filter(c => c.pos == data.pos)[0];
-    
-    const turningRadius = 29.443664472000638; // dervied empirically
+    let pos = new paper.Point(curve.pos);
+    let direction = new paper.Point(curve.direction.x, curve.direction.y);
+    const turningRadius = 29.443664472000638; // derived empirically
     if (!this.startPos) {
       this.startPos = curve.pos;
       let perpendicularDirection = new paper.Point(curve.direction.x, curve.direction.y).rotate(90);
@@ -89,7 +90,8 @@ class MyBot extends Bot {
 
     }
     this.debugLayer.addChild(
-      new paper.Path.Circle({ center: this.circleCenter, radius: 2,
+      new paper.Path.Circle({
+        center: this.circleCenter, radius: 2,
         strokeColor: '#f00',
         strokeWidth: 3
       })
@@ -97,48 +99,50 @@ class MyBot extends Bot {
     const shapes = paper.project.getItems({ data: { type: 0 } });
     let command: curveCommand = 0;
 
-    // Get our own curve.
-    // console.log(curve);
-    // console.log(data.direction);
+    let distanceFromCenter = this.circleCenter.getDistance(curve.pos);
 
-
-
-    // console.log(this.counter);
     this.counter++;
-    let perpendicularToDirection = new paper.Point(
-      -curve.direction.y,
-      curve.direction.x
-    ).normalize();
-    let pointOffTip = new paper.Point(
-      curve.pos.x + curve.direction.x * 5,
-      curve.pos.y + curve.direction.y * 5
-    );
-    let projectedPoint = new paper.Point(
-      curve.pos.x + perpendicularToDirection.x * 15,
-      curve.pos.y + perpendicularToDirection.y * 15
-    );
-    let line = new paper.Path.Line({
-      from: pointOffTip,
-      to: projectedPoint,
-      strokeColor: '#fff',
-      strokeWidth: 1
-    });
-    this.debugLayer.addChild(line);
-    this.sendPaintMessage(paper.project);
 
-    // collision test
-    command = -1;
+    let targetDistance = turningRadius;
 
-    if (this.counter > 2 * Math.PI * turningRadius) {
-      command = 0;
-    } else {
-      for (const shape of shapes) {
-        if (line.intersects(shape)) {
-          console.log("intersects!");
-          command = 0;
+    // Make a circle and try to intersect it with all the shapes
+    let a = new paper.Path.Circle(curve.pos, 20);
+    let hitLocation: Paper.Point | null = null;
+    for (const shape of <Paper.PathItem[]>shapes) {
+      let intersections = a.getIntersections(shape);
+      // if (intersections.length) debugger;
+      for (const curveLocation of intersections) {
+        let angle = curveLocation.point.subtract(pos).angle;
+        if (Math.abs(direction.angle - angle) > 50) {
+          // Skip intersections behind us
+          this.debugLayer.addChild(new paper.Path.Circle({center: curveLocation.point,
+            radius: 2,
+            strokeColor: '#fff'
+          }));
+          continue;
         }
+        this.debugLayer.addChild(new paper.Path.Circle({center: curveLocation.point,
+          radius: 2,
+          strokeColor: '#00f'
+        }));
+        // Found a hit, store it
+        hitLocation = curveLocation.point;
+        break;
       }
     }
+    if (hitLocation) {
+      // Try to move away from the hit
+      command = 1;
+    } else {
+      if (distanceFromCenter - targetDistance > 1.0) {
+        // Try to maintain a distance to the center
+        command = -1;
+      } else {
+        command = 0;
+      }
+    }
+
+    this.sendPaintMessage(paper.project);
     this.sendCommand(id, command);
   }
 }
