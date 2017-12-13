@@ -16,7 +16,8 @@ import { WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMess
 declare const paper:typeof Paper;
 
 const DEBUG = {
-  step: false
+  step: false,
+  devMode: true,
 };
 
 // Entity types
@@ -258,6 +259,7 @@ class Direction {
 }
 
 class Curve {
+  debugLayer: Paper.Layer;
   pos:Paper.Point;
   color:Paper.Color;
   direction:Direction;
@@ -323,6 +325,16 @@ class Curve {
         case WorkerMessageType.UPDATE:
           this.commandCallbacks[e.data.id](e.data.command);
           delete this.commandCallbacks[e.data.id];
+          break;
+        case WorkerMessageType.PAINT:
+          if (DEBUG.devMode) {
+            if (!this.debugLayer) {
+              this.debugLayer = new paper.Layer();
+            } else {
+              this.debugLayer.removeChildren();
+            }
+            this.debugLayer.importJSON(e.data.paperState);
+          }
           break;
       }
     }, false);

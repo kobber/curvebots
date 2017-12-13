@@ -10,7 +10,8 @@ type curveCommand = 1 | 0 | -1;
 // Worker messages
 declare const enum WorkerMessageType {
   READY = 'ready',
-  UPDATE = 'update'
+  UPDATE = 'update',
+  PAINT = 'paint'
 }
 
 interface WorkerMessage_ready {
@@ -23,7 +24,12 @@ interface WorkerMessage_update {
   command: curveCommand
 }
 
-type WorkerMessageData = WorkerMessage_ready | WorkerMessage_update
+interface WorkerMessage_paint {
+  type: WorkerMessageType.PAINT,
+  paperState: string
+}
+
+type WorkerMessageData = WorkerMessage_ready | WorkerMessage_update | WorkerMessage_paint
 
 interface WorkerMessage extends MessageEvent {
   data: WorkerMessageData
@@ -35,6 +41,16 @@ declare const enum AppMessageType {
   UPDATE = 'update'
 }
 
+interface Direction {
+  x: number,
+  y: number
+}
+
+interface Curve {
+  pos: Paper.Point,
+  direction: Direction
+}
+
 interface AppMessage_init {
   type: AppMessageType.INIT,
   width: number,
@@ -43,7 +59,7 @@ interface AppMessage_init {
 interface AppMessage_update {
   type: AppMessageType.UPDATE,
   paperState: string,
-  curves: Array<any>,
+  curves: Array<Curve>,
   pos: Paper.Point,
   direction: any,
   id: number

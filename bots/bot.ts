@@ -1,14 +1,15 @@
 self.importScripts('../node_modules/paper/dist/paper-core.min.js');
 import * as Paper from 'paper';
-import { AppMessage, AppMessageType, WorkerMessageType, curveCommand, WorkerMessageData } from '../messages';
+import { AppMessage, AppMessageType, WorkerMessageType, curveCommand, WorkerMessageData, Curve } from '../messages';
 declare const paper: typeof Paper;
 
 paper.install(this);
 
 abstract class Bot {
+  debugLayer: Paper.Layer;
   constructor() {
     // Listen for messages from game
-    addEventListener('message', (e:AppMessage) => {
+    addEventListener('message', (e: AppMessage) => {
       switch (e.data.type) {
 
         case AppMessageType.INIT:
@@ -17,9 +18,10 @@ abstract class Bot {
             type: WorkerMessageType.READY
           });
           break;
-          
+
         case AppMessageType.UPDATE:
           paper.project.clear();
+          this.debugLayer = new paper.Layer();
           paper.project.importJSON(e.data.paperState);
           this.update(e.data.id, {
             paper: paper,
@@ -28,23 +30,29 @@ abstract class Bot {
             direction: e.data.direction,
           });
           break;
-        
+
         default:
           break;
       }
     }, false);
   }
-  sendCommand(id: number, command:curveCommand) {
+  sendCommand(id: number, command: curveCommand) {
     this.postMessage({
       type: WorkerMessageType.UPDATE,
       id: id,
       command: command
     });
   }
-  postMessage(message:WorkerMessageData) {
+  sendPaintMessage(paperProject: Paper.Project) {
+    this.postMessage({
+      type: WorkerMessageType.PAINT,
+      paperState: this.debugLayer.exportJSON()
+    });
+  }
+  postMessage(message: WorkerMessageData) {
     postMessage(message);
   }
-  abstract update(id:number, data:{
+  abstract update(id: number, data: {
     paper: typeof Paper,
     curves: Array<any>,
     pos: Paper.Point,
@@ -53,40 +61,85 @@ abstract class Bot {
 }
 
 class MyBot extends Bot {
-  count: number;
+  circleCenter: Paper.Point;
+  startPos: Paper.Point;
+  counter: number;
+  turns: number;
   constructor() {
     super();
-    this.count = 0;
+    this.counter = 0;
+    this.turns = 0;
   }
-  update(id: number, data:{
+  update(id: number, data: {
     paper: typeof Paper,
-    curves: Array<any>,
+    curves: Array<Curve>,
     pos: Paper.Point,
     direction: any
   }) {
-    const shapes = paper.project.getItems({ data: { type: 0 } });
-    let command:curveCommand = 0;
+    let curve = data.curves.filter(c => c.pos == data.pos)[0];
     
-    // Do some collision checking
-    // Check if we can go straight
-    const newPoint = new paper.Point(data.pos.x + (34 * data.direction.x), data.pos.y + (34 * data.direction.y);
-    const collisionline = new paper.Path([
-      data.pos, newPoint
-    ]);
-    if (!paper.view.bounds.contains(newPoint)) {
-      command = -1;
+    const turningRadius = 29.443664472000638; // dervied empirically
+    if (!this.startPos) {
+      this.startPos = curve.pos;
+      let perpendicularDirection = new paper.Point(curve.direction.x, curve.direction.y).rotate(90);
+      this.circleCenter = new paper.Point(
+        this.startPos.x + turningRadius * perpendicularDirection.x,
+        this.startPos.y + turningRadius * perpendicularDirection.y,
+      );
+
     }
-    for (const shape of shapes) {
-      if (collisionline.intersects(shape)) {
-        command = -1;
+    this.debugLayer.addChild(
+      new paper.Path.Circle({ center: this.circleCenter, radius: 2,
+        strokeColor: '#f00',
+        strokeWidth: 3
+      })
+    );
+    const shapes = paper.project.getItems({ data: { type: 0 } });
+    let command: curveCommand = 0;
+
+    // Get our own curve.
+    // console.log(curve);
+    // console.log(data.direction);
+
+
+
+    // console.log(this.counter);
+    this.counter++;
+    let perpendicularToDirection = new paper.Point(
+      -curve.direction.y,
+      curve.direction.x
+    ).normalize();
+    let pointOffTip = new paper.Point(
+      curve.pos.x + curve.direction.x * 5,
+      curve.pos.y + curve.direction.y * 5
+    );
+    let projectedPoint = new paper.Point(
+      curve.pos.x + perpendicularToDirection.x * 15,
+      curve.pos.y + perpendicularToDirection.y * 15
+    );
+    let line = new paper.Path.Line({
+      from: pointOffTip,
+      to: projectedPoint,
+      strokeColor: '#fff',
+      strokeWidth: 1
+    });
+    this.debugLayer.addChild(line);
+    this.sendPaintMessage(paper.project);
+
+    // collision test
+    command = -1;
+
+    if (this.counter > 2 * Math.PI * turningRadius) {
+      command = 0;
+    } else {
+      for (const shape of shapes) {
+        if (line.intersects(shape)) {
+          console.log("intersects!");
+          command = 0;
+        }
       }
     }
-    collisionline.remove();
-
     this.sendCommand(id, command);
-    if (this.count > 20) {
-      this.count = 0;
-    }
   }
 }
 
