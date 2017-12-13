@@ -1,7 +1,7 @@
 body {
   background: hsl(220, 13%, 14%);
-  font-family: arial;
-  color: #C0C5CE;
+  font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+  color: #FFFDF4;
   margin: 20px;
   font-size: 16px;
 }
@@ -9,6 +9,12 @@ body {
   outline: 2px solid #C0C5CE;
   float: left;
   background: hsl(220, 13%, 18%);
+}
+.logo {
+  margin-bottom: 15px;
+}
+.logo img {
+  width: 200px;
 }
 .sidebar {
   width: 200px;

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="656px" height="121px" viewBox="0 0 656 121" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 48.1 (47250) - http://www.bohemiancoding.com/sketch -->
+    <title>Artboard</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Artboard" stroke-width="15">
+            <path d="M66,52.2997603 C60.8646026,48.348789 54.4357488,46 47.4590425,46 C30.6369778,46 17,59.6553151 17,76.5 C17,93.3446849 30.6369778,107 47.4590425,107 C53.8737186,107 59.8252548,105.014396 64.7341142,101.623505" id="Oval" stroke="#F06372" stroke-linecap="round" stroke-linejoin="round"></path>
+            <circle id="Oval-2-Copy-2" stroke="#FFFDF4" cx="415.5" cy="76.5" r="30.5"></circle>
+            <circle id="Oval-2-Copy-3" stroke="#FFFDF4" cx="500.5" cy="76.5" r="30.5"></circle>
+            <path d="M642,46.5121489 C626.670813,46.3763847 618.495552,46.3514037 617.474219,46.4372058 C613.40829,46.7787841 609.527441,48.8977195 607.068272,52.5530194 C602.761263,58.9549419 604.446135,67.6452786 610.831538,71.9634298 L627.971026,81.2773316 C634.35643,85.5954828 636.041301,94.2858196 631.734292,100.687742 C629.218003,104.427945 625.213224,106.559583 621.044739,106.824478 C620.111481,106.883784 609.224327,106.942291 588.383279,107 C571.710709,107.002381 559,94.258789 559,78.5387717 L559,29" id="Oval-2-Copy-4" stroke="#FFFDF4" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M304.009524,76.5 C322.244744,76.5 336.974192,76.5 348.19787,76.5 C357.149106,76.5 360.699322,72.5675947 358.239742,65.909516 C353.949655,54.2962602 342.715883,46 329.566358,46 C312.685025,46 299,59.6553151 299,76.5 C299,93.3446849 312.685025,107 329.566358,107 C339.462888,107 347.740693,105.501683 354.399772,102.505049" id="Oval-2-Copy" stroke="#D370E3" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M200,49 C183.983742,49 171,61.7374607 171,77.4499148 L171,107" id="Oval-Copy-2" stroke="#8BC66F" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M546,49 L580,49" id="Oval-Copy-4" stroke="#FFFDF4" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M385,14 L385,106 L385,14 Z" id="Oval-Copy-3" stroke="#FFFDF4" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M93,48 L93,82.3304291 C93,95.9550569 103.969024,107 117.5,107 C131.030976,107 142,95.9550569 142,82.3304291 L142,48.152865" id="Oval-Copy" stroke="#EEAC72" stroke-linecap="round" stroke-linejoin="round"></path>
+            <polyline id="Path-2" stroke="#46B0F5" stroke-linecap="round" stroke-linejoin="round" points="224 49 252.528747 107 280 49"></polyline>
+        </g>
+    </g>
+</svg>
