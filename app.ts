@@ -559,11 +559,11 @@ function keyboardBot(key1:string, key2:string) {
 }
 
 const player1 = new Player({
-  file: 'bots/bot.js'
+  file: 'bots/spiral.bot.js'
 });
-const player2 = new Player({
-  file: 'bots/bot.js'
-});
+// const player2 = new Player({
+//   file: 'bots/bot.js'
+// });
 // const player2 = new Player({
 //   controller: vacuumBot()
 // });

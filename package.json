@@ -5,12 +5,14 @@
   "dependencies": {
     "http-server": "^0.10.0",
     "paper": "^0.11.5",
-    "typescript": "^2.6.2"
+    "ts-loader": "^3.2.0",
+    "typescript": "^2.6.2",
+    "webpack": "^3.10.0"
   },
   "scripts": {
     "build": "tsc",
-    "build:bots": "tsc --project bots",
-    "build:bots:watch": "tsc --watch --project bots",
+    "build:bots": "webpack --config bots/webpack.config.js",
+    "build:bots:watch": "webpack --config bots/webpack.config.js --watch",
     "build:watch": "tsc --watch",
     "serve": "http-server"
   }

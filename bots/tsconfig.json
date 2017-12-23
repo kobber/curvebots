@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "module": "es6",
+    "module": "commonjs",
     "strictNullChecks": true,
     "sourceMap": true,
     "lib": [
@@ -10,9 +10,8 @@
       "scripthost"
     ]
   },
-  "files": [
-    "bot.ts",
-    "paper.d.ts",
+  "include": [
+    "*.ts",
     "../messages.d.ts"
   ]
 }
