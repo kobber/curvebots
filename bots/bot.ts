@@ -7,12 +7,19 @@ paper.install(this);
 
 export abstract class Bot {
   debugLayer: Paper.Layer;
+  playerId: number;
+
+  getMyCurve(curves: Curve[]) {
+    return curves.filter(curve => curve.id === this.playerId)[0];
+  }
+
   constructor() {
     // Listen for messages from game
     addEventListener('message', (e: AppMessage) => {
       switch (e.data.type) {
 
         case AppMessageType.INIT:
+          this.playerId = e.data.playerId;
           paper.setup([e.data.width, e.data.height]);
           paper.project.currentStyle.strokeColor = "#fff";
           paper.project.currentStyle.strokeWidth = 1;

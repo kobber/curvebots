@@ -336,6 +336,7 @@ class Curve {
 
     this.postMessage({
       type: AppMessageType.INIT,
+      playerId: this.player.id,
       width: 400,
       height: 400
     });

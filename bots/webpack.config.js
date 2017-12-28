@@ -1,7 +1,8 @@
 const path = require('path');
 
 const entries = {
-  artemis: './bots/artemis.ts'
+  artemis: './bots/artemis.ts',
+  spiral: './bots/spiral.ts'
 }
 
 module.exports = {
