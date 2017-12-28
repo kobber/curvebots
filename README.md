@@ -14,7 +14,10 @@ Game configuration lives in `config.ts`. Add players and set debug options here.
 
 ## Bulding a bot
 
-Put a new file in `/bots` folder, named `[name]_bot.ts`. Add the bot to the `players` array in `config.ts` and build bots with `npm run build:bots`. The built bots file will be called `[name].bot.js`.
+1. Put a new file in `/bots` folder, named `[name]_bot.ts`
+2. Add the file to `entries` in `bots/webpack.config.js`
+3. Add `{ file: [name].bot.js }` to the `players` array in `config.ts`
+4. build bots with `npm run build:bots`.
 
 ## Notes
 
