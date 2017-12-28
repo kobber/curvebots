@@ -7,6 +7,13 @@ declare const enum TYPE {
 // Other types
 type curveCommand = 1 | 0 | -1;
 
+interface Direction {
+  x: number;
+  y: number;
+  rad: number;
+  deg: number;
+}
+
 // Worker messages
 declare const enum WorkerMessageType {
   READY = 'ready',
@@ -61,7 +68,7 @@ interface AppMessage_update {
   paperState: string,
   curves: Array<Curve>,
   pos: Paper.Point,
-  direction: any,
+  direction: Direction,
   id: number
 }
 

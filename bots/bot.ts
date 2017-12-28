@@ -1,6 +1,6 @@
 self.importScripts('../node_modules/paper/dist/paper-core.min.js');
 import * as Paper from 'paper';
-import { AppMessage, AppMessageType, WorkerMessageType, curveCommand, WorkerMessageData, Curve } from '../messages';
+import { TYPE, AppMessage, AppMessageType, WorkerMessageType, curveCommand, WorkerMessageData, Curve } from '../messages';
 declare const paper: typeof Paper;
 
 paper.install(this);
@@ -14,6 +14,9 @@ export abstract class Bot {
 
         case AppMessageType.INIT:
           paper.setup([e.data.width, e.data.height]);
+          paper.project.currentStyle.strokeColor = "#fff";
+          paper.project.currentStyle.strokeWidth = 1;
+          paper.project.currentStyle.dashArray = [1,1];
           this.postMessage({
             type: WorkerMessageType.READY
           });
@@ -21,12 +24,15 @@ export abstract class Bot {
 
         case AppMessageType.UPDATE:
           paper.project.clear();
-          this.debugLayer = new paper.Layer();
           paper.project.importJSON(e.data.paperState);
+          this.debugLayer = new paper.Layer();
+          this.debugLayer.activate();
+          const curves = paper.project.getItems({ data: { type: TYPE.curve } });
           this.update(e.data.id, {
             paper: paper,
-            curves: e.data.curves,
-            pos: e.data.pos,
+            curves: curves,
+            bounds: new paper.Path.Rectangle(paper.view.bounds),
+            pos: new paper.Point(e.data.pos),
             direction: e.data.direction,
           });
           break;
@@ -54,8 +60,9 @@ export abstract class Bot {
   }
   abstract update(id: number, data: {
     paper: typeof Paper,
-    curves: Array<any>,
+    curves: Array<Paper.Item>,
     pos: Paper.Point,
+    bounds: Paper.Path,
     direction: any,
   });
 }

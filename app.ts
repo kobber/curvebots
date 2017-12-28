@@ -12,18 +12,13 @@ TODO:
 */
 
 import * as Paper from 'paper';
-import { WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData } from './messages';
+import { TYPE, WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData } from './messages';
 declare const paper:typeof Paper;
 
 const DEBUG = {
   step: false,
   devMode: true,
 };
-
-// Entity types
-enum TYPE {
-  curve
-}
 
 const colors = [
   new paper.Color({hue:355, saturation: 0.65, lightness: 0.65}), // red
@@ -54,7 +49,7 @@ class Game {
     for (const player of opts.players) {
       player.id = opts.players.indexOf(player);
       player.color = colors[player.id];
-      player.name = 'Player ' + player.id;
+      player.name = player.name || 'Player ' + player.id;
       player.score = 0;
     }
     this.newRound();
@@ -231,8 +226,12 @@ class Player {
   botFileName: string;
   constructor(opts:{
     file:string;
+    name?: string;
   }) {
     this.winner = false;
+    if (opts.name) {
+      this.name = opts.name;
+    }
     this.botFileName = opts.file;
   }
 }
@@ -240,21 +239,19 @@ class Player {
 class Direction {
   x:number;
   y:number;
+  rad:number;
+  deg:number;
   constructor(deg:number) {
     this.y = Math.cos(Direction.degToRad(deg));
     this.x = Math.sin(Direction.degToRad(deg));
+    this.rad = Math.atan2(this.x, this.y);
+    this.deg = Direction.radToDeg(this.rad);
   }
   static radToDeg(rad) {
     return rad * (180 / Math.PI);
   }
   static degToRad(deg) {
     return deg * (Math.PI / 180);
-  }
-  get rad():number {
-    return Math.atan2(this.x, this.y);
-  }
-  get deg():number {
-    return Direction.radToDeg(this.rad);
   }
 }
 
@@ -556,21 +553,7 @@ function keyboardBot(key1:string, key2:string) {
     }
     return 0;
   }
-}
-
-const player1 = new Player({
-  file: 'bots/spiral.bot.js'
-});
-// const player2 = new Player({
-//   file: 'bots/bot.js'
-// });
-// const player2 = new Player({
-//   controller: vacuumBot()
-// });
-// const player3 = new Player({
-//   controller: vacuumBot()
-// });
-
+} 
 
 class Keyboard {
   keys: {[key:string]:{pressed:boolean}} = {};
@@ -590,8 +573,15 @@ const keyboard = new Keyboard();
 
 const game = new Game({
   players: [
-    player1,
-    // player2,
-    // player3
+    new Player({
+      name: 'artemis',
+      file: 'bots/artemis.bot.js'
+    }),
+    new Player({
+      file: 'bots/artemis.bot.js'
+    }),
+    new Player({
+      file: 'bots/artemis.bot.js'
+    }),
   ]
 });
