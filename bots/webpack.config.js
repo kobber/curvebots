@@ -8,7 +8,7 @@ module.exports = {
   entry: entries,
   output: {
     path: path.resolve(__dirname),
-    filename: "[name].bot.js", 
+    filename: "../dist/[name].bot.js", 
   },
   module: {
     rules: [

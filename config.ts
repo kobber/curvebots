@@ -5,7 +5,7 @@ export const config:GameConfig = {
     players: [
       {
         name: 'artemis',
-        file: 'bots/artemis.bot.js'
+        file: 'dist/artemis.bot.js'
       }
     ]
   },
