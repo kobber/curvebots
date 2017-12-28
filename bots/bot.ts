@@ -28,7 +28,7 @@ export abstract class Bot {
           this.debugLayer = new paper.Layer();
           this.debugLayer.activate();
           for (const curve of e.data.curves) {
-            curve.paths = <Paper.Path[]>paper.project.getItems({ data: { type: TYPE.curve, playerId: curve.id } });
+            curve.path = <Paper.CompoundPath>paper.project.getItem({ data: { type: TYPE.curve, playerId: curve.id } });
           }
           this.update(e.data.id, {
             paper: paper,

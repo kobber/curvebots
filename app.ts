@@ -289,7 +289,6 @@ class Curve {
     this.ready = false;
     this.onReadyCallbacks = [];
     this.commandCallbacks = {};
-
     this.path = new paper.CompoundPath({
       strokeColor: this.player.color,
       fillColor: new paper.Color(0,0,0,0),
@@ -360,7 +359,8 @@ class Curve {
     for (const curve of this.round.curves) {
       curves.push({
         pos: curve.pos,
-        direction: curve.direction
+        direction: curve.direction,
+        id: curve.player.id
       });
     }
     this.commandCallbacks[id] = callback;

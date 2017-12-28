@@ -34,15 +34,14 @@ class Artemis extends Bot {
     pos: Paper.Point,
     direction: Direction
   }) {
+  console.log(data);
     let command: curveCommand = 0;
     const turnradius = 33;
 
     function getIntersections(path:Paper.Path, curveOnly?:boolean) {
       let intersections:Paper.CurveLocation[] = [];
       for (let curve of data.curves) {
-        for (let path of curve.paths) {
-          intersections = intersections.concat(path.getIntersections(path));
-        }
+        intersections = intersections.concat(curve.path.getIntersections(path));
       }
       if (!curveOnly) {
         intersections = intersections.concat(path.getIntersections(data.bounds));
