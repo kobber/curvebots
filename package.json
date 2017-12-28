@@ -10,10 +10,10 @@
     "webpack": "^3.10.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "webpack --config webpack.config.js",
     "build:bots": "webpack --config bots/webpack.config.js",
     "build:bots:watch": "webpack --config bots/webpack.config.js --watch",
-    "build:watch": "tsc --watch",
+    "build:watch": "webpack --config webpack.config.js --watch",
     "serve": "http-server"
   }
 }

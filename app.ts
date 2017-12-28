@@ -1,24 +1,22 @@
-/*
-TODO:
-[x] Start new workers each round
-[x] Kill workers when a round ends
-[x] Wait for curve command each update step
-[x] Send paper data to worker for reconstruction
-[ ] Make extendable bot class for others to use
-[ ] Send more useful information to bots.
-    - They currently only get the entire paper state.
-    - They need to know their own position and direction
-    - They need to know other players position and direction, not only their curves
-*/
-
 import * as Paper from 'paper';
 import { TYPE, WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData } from './messages';
+import { config } from './config';
 declare const paper:typeof Paper;
 
-const DEBUG = {
-  step: false,
-  devMode: true,
-};
+const DEBUG = config.debug;
+
+export interface GameConfig {
+  game: {
+    players: {
+        name: string,
+        file: string
+      }[]
+  },
+  debug: {
+    step: boolean,
+    devMode: boolean,
+  }
+}
 
 const colors = [
   new paper.Color({hue:355, saturation: 0.65, lightness: 0.65}), // red
@@ -572,16 +570,5 @@ class Keyboard {
 const keyboard = new Keyboard();
 
 const game = new Game({
-  players: [
-    new Player({
-      name: 'artemis',
-      file: 'bots/artemis.bot.js'
-    }),
-    new Player({
-      file: 'bots/artemis.bot.js'
-    }),
-    new Player({
-      file: 'bots/artemis.bot.js'
-    }),
-  ]
+  players: config.game.players.map((player) => new Player(player))
 });
