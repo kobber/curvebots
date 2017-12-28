@@ -29,7 +29,7 @@ class Artemis extends Bot {
   } 
   update(id: number, data: {
     paper: typeof Paper,
-    curves: Array<Paper.Path>,
+    curves: Curve[],
     bounds: Paper.Path,
     pos: Paper.Point,
     direction: Direction
@@ -40,7 +40,9 @@ class Artemis extends Bot {
     function getIntersections(path:Paper.Path, curveOnly?:boolean) {
       let intersections:Paper.CurveLocation[] = [];
       for (let curve of data.curves) {
-        intersections = intersections.concat(path.getIntersections(curve));
+        for (let path of curve.paths) {
+          intersections = intersections.concat(path.getIntersections(path));
+        }
       }
       if (!curveOnly) {
         intersections = intersections.concat(path.getIntersections(data.bounds));

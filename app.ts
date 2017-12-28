@@ -296,6 +296,7 @@ class Curve {
       strokeCap: 'round',
       strokeWidth: 3,
       data: {
+        playerId: this.player.id,
         type: TYPE.curve,
       }
     });

@@ -27,10 +27,12 @@ export abstract class Bot {
           paper.project.importJSON(e.data.paperState);
           this.debugLayer = new paper.Layer();
           this.debugLayer.activate();
-          const curves = paper.project.getItems({ data: { type: TYPE.curve } });
+          for (const curve of e.data.curves) {
+            curve.paths = <Paper.Path[]>paper.project.getItems({ data: { type: TYPE.curve, playerId: curve.id } });
+          }
           this.update(e.data.id, {
             paper: paper,
-            curves: curves,
+            curves: e.data.curves,
             bounds: new paper.Path.Rectangle(paper.view.bounds),
             pos: new paper.Point(e.data.pos),
             direction: e.data.direction,
@@ -60,7 +62,7 @@ export abstract class Bot {
   }
   abstract update(id: number, data: {
     paper: typeof Paper,
-    curves: Array<Paper.Item>,
+    curves: Curve[],
     pos: Paper.Point,
     bounds: Paper.Path,
     direction: any,

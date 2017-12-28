@@ -54,8 +54,10 @@ interface Direction {
 }
 
 interface Curve {
+  id: number,
   pos: Paper.Point,
-  direction: Direction
+  direction: Direction,
+  paths: Paper.Path[]
 }
 
 interface AppMessage_init {
