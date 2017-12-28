@@ -137,25 +137,29 @@ class Round {
     }
     this.ended = true;
 
-    // Clear all paths
-    paper.project.clear();
+    const startNextRound = () => {
+      // Clear all paths
+      paper.project.clear();
 
-    // start new round
-    const pointsToWin = game.players.length * 10;
-    const players = this.players;
+      // start new round
+      const pointsToWin = game.players.length * 10;
+      const players = this.players;
 
-    // Kill all bots
-    for (const curve of this.curves) {
-      curve.kill();
-    }
+      // Kill all bots
+      for (const curve of this.curves) {
+        curve.kill();
+      }
 
-    if (players[0].score >= pointsToWin && players[0].score >= players[1].score + 2) {
-      // Game end
-      players[0].winner = true;
-      this.game.sidebar.render();
-    } else {
-      this.game.newRound();
-    }
+      if (players[0].score >= pointsToWin && players[0].score >= players[1].score + 2) {
+        // Game end
+        players[0].winner = true;
+        this.game.sidebar.render();
+      } else {
+        this.game.newRound();
+      }
+    };
+
+    setTimeout(startNextRound, 3000);
   }
   getDeadPlayerCount() {
     let deadPlayerCount = 0;
@@ -385,8 +389,28 @@ class Curve {
     return Math.random() * 300 + 10;
   }
 
+  explosion() {
+    let self = this;
+    function expandingCircle(radius: number) {
+      let circle = new paper.Path.Circle({center: self.pos, radius: radius,
+        strokeColor: self.player.color,
+        strokeWidth: 2,
+        opacity: 1
+      });
+      circle.onFrame = function (this: Paper.Path.Circle, event) {
+        this.strokeWidth = Math.max(0, 2 - Math.pow(event.time * 2, 1.5));
+        this.opacity = Math.max(0, 1 - event.time * 2);
+        this.scale(1.0 + Math.pow(event.time, 0.1) * 0.1);
+      };
+    }
+    expandingCircle(5);
+    setTimeout(() => expandingCircle(5), 150);
+    setTimeout(() => expandingCircle(5), 300);
+  }
+
   collision() {
     this.round.score(this.player);
+    this.explosion();
     this.alive = false;
     this.round.checkRoundEnd();
   }
