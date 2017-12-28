@@ -6,6 +6,10 @@ export const config:GameConfig = {
       {
         name: 'artemis',
         file: 'dist/artemis.bot.js'
+      },
+      {
+        name: 'spiral',
+        file: 'dist/spiral.bot.js'
       }
     ]
   },

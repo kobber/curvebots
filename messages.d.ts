@@ -64,6 +64,7 @@ interface AppMessage_init {
   type: AppMessageType.INIT,
   width: number,
   height: number
+  playerId: number
 }
 interface AppMessage_update {
   type: AppMessageType.UPDATE,
