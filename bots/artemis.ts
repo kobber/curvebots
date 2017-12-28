@@ -34,7 +34,6 @@ class Artemis extends Bot {
     pos: Paper.Point,
     direction: Direction
   }) {
-  console.log(data);
     let command: curveCommand = 0;
     const turnradius = 33;
 
