@@ -95,6 +95,7 @@ class Sidebar {
 }
 
 class Round {
+  curvesGroup: Paper.Group;
   curves:Curve[];
   game:Game;
   players:Player[];
@@ -104,6 +105,7 @@ class Round {
     this.curves = [];
     this.game = opts.game;
     this.players = opts.players;
+    this.curvesGroup = new paper.Group();
 
     let readyCurveCount = 0;
 
@@ -307,6 +309,7 @@ class Curve {
         type: TYPE.curve,
       }
     });
+    this.round.curvesGroup.addChild(this.path);
     this.dot = new paper.Path.Circle({
       center: this.pos,
       radius: 4,
@@ -374,12 +377,13 @@ class Curve {
     }
     this.commandCallbacks[id] = callback;
     
+    const paperState = this.round.curvesGroup;
     this.postMessage({
       type: AppMessageType.UPDATE,
       pos: this.pos,
       direction: this.direction,
       curves: curves,
-      paperState: paper.project.exportJSON(),
+      paperState: paperState.exportJSON(),
       id: id
     });
   }

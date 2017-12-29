@@ -31,12 +31,13 @@ export abstract class Bot {
 
         case AppMessageType.UPDATE:
           paper.project.clear();
-          paper.project.importJSON(e.data.paperState);
+          let g = new paper.Group();
+          g.importJSON(e.data.paperState);
           this.debugLayer = new paper.Layer();
           this.debugLayer.activate();
           for (const curve of e.data.curves) {
             curve.path = <Paper.CompoundPath>paper.project.getItem({ data: { type: TYPE.curve, playerId: curve.id } });
-          }
+          };
           this.update(e.data.id, {
             paper: paper,
             curves: e.data.curves,
