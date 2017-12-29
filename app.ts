@@ -4,6 +4,7 @@ import { config } from './config';
 declare const paper:typeof Paper;
 
 const DEBUG = config.debug;
+const VISUALS = config.visuals;
 
 export interface GameConfig {
   game: {
@@ -12,9 +13,12 @@ export interface GameConfig {
         file: string
       }[]
   },
+  visuals: {
+    explosions: boolean
+  }
   debug: {
     step: boolean,
-    devMode: boolean,
+    devMode: boolean
   }
 }
 
@@ -244,9 +248,9 @@ class Direction {
   rad:number;
   deg:number;
   constructor(deg:number) {
-    this.y = Math.cos(Direction.degToRad(deg));
-    this.x = Math.sin(Direction.degToRad(deg));
-    this.rad = Math.atan2(this.x, this.y);
+    this.x = Math.cos(Direction.degToRad(deg));
+    this.y = Math.sin(Direction.degToRad(deg));
+    this.rad = Math.atan2(this.y, this.x);
     this.deg = Direction.radToDeg(this.rad);
   }
   static radToDeg(rad) {
@@ -258,7 +262,7 @@ class Direction {
 }
 
 class Curve {
-  debugLayer: Paper.Layer;
+  debugOverlay: Paper.Group;
   pos:Paper.Point;
   color:Paper.Color;
   direction:Direction;
@@ -327,12 +331,12 @@ class Curve {
           break;
         case WorkerMessageType.PAINT:
           if (DEBUG.devMode) {
-            if (!this.debugLayer) {
-              this.debugLayer = new paper.Layer();
+            if (!this.debugOverlay) {
+              this.debugOverlay = new paper.Group();
             } else {
-              this.debugLayer.removeChildren();
+              this.debugOverlay.removeChildren();
             }
-            this.debugLayer.importJSON(e.data.paperState);
+            this.debugOverlay.importJSON(e.data.paperState);
           }
           break;
       }
@@ -390,27 +394,65 @@ class Curve {
   }
 
   explosion() {
-    let self = this;
-    function expandingCircle(radius: number) {
-      let circle = new paper.Path.Circle({center: self.pos, radius: radius,
-        strokeColor: self.player.color,
+    const expandingCircle = (radius: number) => {
+      let circle = new paper.Path.Circle({
+        center: this.pos, radius: radius,
+        strokeColor: this.player.color,
         strokeWidth: 2,
         opacity: 1
       });
-      circle.onFrame = function (this: Paper.Path.Circle, event) {
-        this.strokeWidth = Math.max(0, 2 - Math.pow(event.time * 2, 1.5));
-        this.opacity = Math.max(0, 1 - event.time * 2);
-        this.scale(1.0 + Math.pow(event.time, 0.1) * 0.1);
+      circle.onFrame = (event) => {
+        circle.strokeWidth = Math.max(0, 2 - Math.pow(event.time * 2, 1.5));
+        circle.opacity = Math.max(0, 1 - event.time * 2);
+        circle.scale(1.0 + Math.pow(event.time, 0.1) * 0.1);
       };
+      return circle;
     }
-    expandingCircle(5);
-    setTimeout(() => expandingCircle(5), 150);
-    setTimeout(() => expandingCircle(5), 300);
+    let circles = new paper.Group();
+    const initialRadius = 5;
+    circles.addChild(expandingCircle(initialRadius));
+    setTimeout(() => circles.addChild(expandingCircle(initialRadius)), 150);
+    setTimeout(() => circles.addChild(expandingCircle(initialRadius)), 300);
+
+    // Cleanup after a bit, so shit doesn't slow down
+    setTimeout(() => circles.remove(), 1000);
+
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const randomBit = (angle: number, size: number, speed: number, rotationSpeed: number) => {
+      let rect = new paper.Path.Rectangle({
+        from: this.pos.add([-size / 2, -size / 2]),
+        to: this.pos.add([size / 2, size / 2]),
+        fillColor: this.player.color,
+        opacity: 1
+      });
+
+      rect.onFrame = function (event) {
+        rect.opacity = Math.max(0, 1 - event.time / 2);
+        rect.rotate(rotationSpeed * event.time);
+        rect.translate(new Paper.Point(
+          Math.cos(angle) * speed / Math.exp(event.time / 5),
+          Math.sin(angle) * speed / Math.exp(event.time / 5)
+        ));
+      };
+      return rect;
+    }
+
+    let bits = new paper.Group();
+    for (let i = 0; i < rand(10, 20); i++) {
+      // Send bits in a cone shape, 50% in forwards and 50% in backwards direction
+      const angle = (i % 2) * Math.PI + this.direction.rad + rand(-Math.PI / 3, Math.PI / 3);
+      let r = randomBit(angle, rand(0.5, 3), rand(1, 2), rand(1, 5));
+      bits.addChild(r);
+    }
+    // Cleanup after a bit, so shit doesn't slow down
+    setTimeout(() => bits.remove(), 2000);
   }
 
   collision() {
     this.round.score(this.player);
-    this.explosion();
+    if (VISUALS.explosions) {
+      this.explosion();
+    }
     this.alive = false;
     this.round.checkRoundEnd();
   }

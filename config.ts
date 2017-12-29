@@ -10,8 +10,27 @@ export const config:GameConfig = {
       {
         name: 'spiral',
         file: 'dist/spiral.bot.js'
-      }
+      },
+      {
+        name: 'artemis',
+        file: 'dist/artemis.bot.js'
+      },
+      {
+        name: 'spiral',
+        file: 'dist/spiral.bot.js'
+      },
+      {
+        name: 'artemis',
+        file: 'dist/artemis.bot.js'
+      },
+      {
+        name: 'spiral',
+        file: 'dist/spiral.bot.js'
+      },
     ]
+  },
+  visuals: {
+    explosions: true
   },
   debug: {
     // Step through each update cycle with arrow up key
