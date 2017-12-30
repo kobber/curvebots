@@ -1,6 +1,7 @@
 import * as Paper from 'paper';
-import { TYPE, WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData } from './messages';
+import { TYPE, Curve as Messages_Curve, WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData, CurveUpdate } from './messages';
 import { config } from './config';
+import { CurvePainter } from './shared';
 declare const paper:typeof Paper;
 
 const DEBUG = config.debug;
@@ -264,6 +265,7 @@ class Direction {
 }
 
 class Curve {
+  curvePainter: CurvePainter;
   debugOverlay: Paper.Group;
   pos:Paper.Point;
   color:Paper.Color;
@@ -299,16 +301,9 @@ class Curve {
     this.ready = false;
     this.onReadyCallbacks = [];
     this.commandCallbacks = {};
-    this.path = new paper.CompoundPath({
-      strokeColor: this.player.color,
-      fillColor: new paper.Color(0,0,0,0),
-      strokeCap: 'round',
-      strokeWidth: 3,
-      data: {
-        playerId: this.player.id,
-        type: TYPE.curve,
-      }
-    });
+;
+    this.curvePainter = new CurvePainter(paper, this.player.id, this.player.color);
+    this.path = this.curvePainter.path;
     this.round.curvesGroup.addChild(this.path);
     this.dot = new paper.Path.Circle({
       center: this.pos,
@@ -317,6 +312,7 @@ class Curve {
       strokeWidth: 1
     });
 
+    this.curvePainter.startRecording();
     this.startDrawing();
 
     // Listen for events from worker
@@ -367,12 +363,14 @@ class Curve {
 
   getCommand(callback:(command:curveCommand) => void) {
     const id = this.commandId++;
-    const curves:any[] = [];
+    const curves:Messages_Curve[] = [];
+    const updates:CurveUpdate[] = [];
     for (const curve of this.round.curves) {
       curves.push({
         pos: curve.pos,
         direction: curve.direction,
-        id: curve.player.id
+        id: curve.player.id,
+        updates: curve.curvePainter.recordedData
       });
     }
     this.commandCallbacks[id] = callback;
@@ -383,7 +381,6 @@ class Curve {
       pos: this.pos,
       direction: this.direction,
       curves: curves,
-      paperState: paperState.exportJSON(),
       id: id
     });
   }
@@ -474,49 +471,34 @@ class Curve {
       return true;
     }
 
-    // Check for collision with self
-    /*
-      We're collision checking by checking a circle at the tip of the curve,
-      unfortunately, this circle will always collide with the curve itself.
-      To fix this, we duplicate the curve and remove a bit of the tip, then 
-      hittest that instead.
-    */
+    // Grab our last path
     const lastPath = <Paper.Path>this.path.lastChild;
-    if (lastPath.length > this.path.strokeWidth * 1.1) {
-      const pathClone = <Paper.Path>lastPath.clone();
-      // Remove a segment of the tip.
-      pathClone.splitAt(lastPath.length - (this.path.strokeWidth * 1.1)).remove();
-      const hits = pathClone.hitTest(point, {
-        stroke: true,
-        tolerance: this.path.strokeWidth / 2
-      });
-      pathClone.remove();
-      if (hits) {
-        return true;
-      }
-    }
 
-    // Check collision with other curves
-    const hitResults = paper.project.hitTestAll(this.pos, {
+    // Check collision with all curves
+    const hitResult = this.round.curvesGroup.hitTest(this.pos, {
       stroke: true,
       tolerance: this.path.strokeWidth / 2,
       match: (hit) => {
-        // Only care about collision with other curves
         if (hit.item.parent.data.type === TYPE.curve) {
-          // Ignore last path of own curve
           if (hit.location.path === lastPath) {
-            return false;
-          } else {
-            return true;
+            // If it's our own curve, we ignore collisions with the tip.
+            const offset = hit.location.offset;
+            const curOffset = lastPath.length;
+            const diff = curOffset - offset;
+            if (diff <= 0.001) {
+              // Ignore last part of own curve
+              return false;
+            }
           }
+          return true;
         } else {
           return false;
         }
       }
     });
 
-    if (hitResults.length > 0) {
-      return true;;
+    if (hitResult) {
+      return true;
     }
 
     return false;
@@ -525,9 +507,7 @@ class Curve {
   startDrawing() {
     this.draw = true;
     this.collide = true;
-    this.path.addChild(new paper.Path({
-      segments: [this.pos],
-    }));
+    this.curvePainter.startSegment(this.pos);
   }
 
   stopDrawing() {
@@ -536,6 +516,7 @@ class Curve {
   }
 
   update(command:curveCommand) {
+    this.curvePainter.startRecording();
     if (!this.alive) {
       return;
     }
@@ -551,8 +532,6 @@ class Curve {
     if (!this.draw && this.pos.getDistance(lastPath.lastSegment.point) > this.path.strokeWidth * 4) {
       this.startDrawing();
       this.holeSpacing = this.getRandomHoleSpacing();
-      // startDrawing creates a new path, so, reset lastPath ref.
-      lastPath = <Paper.Path>this.path.lastChild;
     }
 
     // Calculate new position
@@ -575,55 +554,10 @@ class Curve {
     if (!this.draw) {
       return;
     }
-    if (command === this.lastCommand && this.lastCommand !== null && lastPath.segments.length > 1) {
-      // If going straight
-      if (command === 0) {
-        // move point instad of adding new one
-        lastPath.lastSegment.remove();
-      }
-  
-      // If curving
-      if ((command === 1 || command === -1) && lastPath.segments.length > 2) {
-        const arcThrough = lastPath.lastSegment.point;
-        lastPath.lastSegment.remove();
-        const path = lastPath.arcTo(arcThrough, this.pos);
-      } else {
-        lastPath.lineTo(this.pos);
-      }
-    } else {
-      lastPath.lineTo(this.pos);
-    }
 
-    this.lastCommand = command;
+    this.curvePainter.addToSegment(this.pos, command);
   }
 }
-
-function vacuumBot() {
-  return function (curve: Curve) {
-    const distance = 40;
-    const collisionPoint = new paper.Point({
-      x: curve.pos.x + (curve.direction.x * distance),
-      y: curve.pos.y + (curve.direction.y * distance)
-    });
-    if (curve.checkCollision(collisionPoint)) {
-      return -1;
-    } else {
-      return 0;
-    }
-  }
-}
-
-function keyboardBot(key1:string, key2:string) {
-  return function (curve: Curve) {
-    if (keyboard.keys[key1] && keyboard.keys[key1].pressed) {
-      return -1;
-    }
-    if (keyboard.keys[key2] && keyboard.keys[key2].pressed) {
-      return 1;
-    }
-    return 0;
-  }
-} 
 
 class Keyboard {
   keys: {[key:string]:{pressed:boolean}} = {};

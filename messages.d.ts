@@ -48,16 +48,34 @@ declare const enum AppMessageType {
   UPDATE = 'update'
 }
 
-interface Direction {
+interface Point {
   x: number,
   y: number
 }
+
+// Curve update
+declare const enum CurveUpdateType {
+  START_SEGMENT = 'startSegment',
+  ADD_TO_SEGMENT = 'move'
+}
+interface CurveUpdate_startSegment {
+  type: CurveUpdateType.START_SEGMENT
+  pos: Point
+}
+interface CurveUpdate_addToSegment {
+  type: CurveUpdateType.ADD_TO_SEGMENT
+  command: curveCommand
+  pos: Point
+}
+
+type CurveUpdate = CurveUpdate_startSegment | CurveUpdate_addToSegment;
 
 interface Curve {
   id: number,
   pos: Paper.Point,
   direction: Direction,
-  path: Paper.CompoundPath
+  updates: CurveUpdate[]
+  path?: Paper.CompoundPath
 }
 
 interface AppMessage_init {
@@ -68,7 +86,6 @@ interface AppMessage_init {
 }
 interface AppMessage_update {
   type: AppMessageType.UPDATE,
-  paperState: string,
   curves: Array<Curve>,
   pos: Paper.Point,
   direction: Direction,
