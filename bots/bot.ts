@@ -1,6 +1,7 @@
 self.importScripts('../node_modules/paper/dist/paper-core.min.js');
 import * as Paper from 'paper';
 import { TYPE, AppMessage, AppMessageType, WorkerMessageType, curveCommand, WorkerMessageData, Curve } from '../messages';
+import { CurvePainter } from '../shared';
 declare const paper: typeof Paper;
 
 paper.install(this);
@@ -8,6 +9,7 @@ paper.install(this);
 export abstract class Bot {
   debugLayer: Paper.Layer;
   playerId: number;
+  curvePainters: { [playerId: number]: CurvePainter };
 
   getMyCurve(curves: Curve[]) {
     return curves.filter(curve => curve.id === this.playerId)[0];
@@ -23,20 +25,24 @@ export abstract class Bot {
           paper.setup([e.data.width, e.data.height]);
           paper.project.currentStyle.strokeColor = "#fff";
           paper.project.currentStyle.strokeWidth = 1;
-          paper.project.currentStyle.dashArray = [1,1];
+          paper.project.currentStyle.dashArray = [1, 1];
+          this.curvePainters = {};
           this.postMessage({
             type: WorkerMessageType.READY
           });
           break;
 
         case AppMessageType.UPDATE:
-          paper.project.clear();
-          paper.project.importJSON(e.data.paperState);
+          for (const curve of e.data.curves) {
+            if (!(curve.id in this.curvePainters)) {
+              this.curvePainters[curve.id] = new CurvePainter(paper, curve.id, new paper.Color('#fff'));
+            }
+            let curvePainter: CurvePainter = this.curvePainters[curve.id];
+            curvePainter.playbackRecordedData(curve.updates);
+            curve.path = curvePainter.path;
+          }
           this.debugLayer = new paper.Layer();
           this.debugLayer.activate();
-          for (const curve of e.data.curves) {
-            curve.path = <Paper.CompoundPath>paper.project.getItem({ data: { type: TYPE.curve, playerId: curve.id } });
-          }
           this.update(e.data.id, {
             paper: paper,
             curves: e.data.curves,
@@ -61,7 +67,7 @@ export abstract class Bot {
   sendPaintMessage(paperProject: Paper.Project) {
     this.postMessage({
       type: WorkerMessageType.PAINT,
-      paperState: this.debugLayer.exportJSON()
+      paperState: this.debugLayer.exportJSON({ asString: false })
     });
   }
   postMessage(message: WorkerMessageData) {

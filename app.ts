@@ -1,9 +1,11 @@
 import * as Paper from 'paper';
-import { TYPE, WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData } from './messages';
+import { TYPE, Curve as Messages_Curve, WorkerMessage, curveCommand, WorkerMessageType, AppMessageType, AppMessageData, CurveUpdate } from './messages';
 import { config } from './config';
+import { CurvePainter } from './shared';
 declare const paper:typeof Paper;
 
 const DEBUG = config.debug;
+const VISUALS = config.visuals;
 
 export interface GameConfig {
   game: {
@@ -12,9 +14,12 @@ export interface GameConfig {
         file: string
       }[]
   },
+  visuals: {
+    explosions: boolean
+  }
   debug: {
     step: boolean,
-    devMode: boolean,
+    devMode: boolean
   }
 }
 
@@ -91,6 +96,7 @@ class Sidebar {
 }
 
 class Round {
+  curvesGroup: Paper.Group;
   curves:Curve[];
   game:Game;
   players:Player[];
@@ -100,6 +106,7 @@ class Round {
     this.curves = [];
     this.game = opts.game;
     this.players = opts.players;
+    this.curvesGroup = new paper.Group();
 
     let readyCurveCount = 0;
 
@@ -137,25 +144,29 @@ class Round {
     }
     this.ended = true;
 
-    // Clear all paths
-    paper.project.clear();
+    const startNextRound = () => {
+      // Clear all paths
+      paper.project.clear();
 
-    // start new round
-    const pointsToWin = game.players.length * 10;
-    const players = this.players;
+      // start new round
+      const pointsToWin = game.players.length * 10;
+      const players = this.players;
 
-    // Kill all bots
-    for (const curve of this.curves) {
-      curve.kill();
-    }
+      // Kill all bots
+      for (const curve of this.curves) {
+        curve.kill();
+      }
 
-    if (players[0].score >= pointsToWin && players[0].score >= players[1].score + 2) {
-      // Game end
-      players[0].winner = true;
-      this.game.sidebar.render();
-    } else {
-      this.game.newRound();
-    }
+      if (players[0].score >= pointsToWin && players[0].score >= players[1].score + 2) {
+        // Game end
+        players[0].winner = true;
+        this.game.sidebar.render();
+      } else {
+        this.game.newRound();
+      }
+    };
+
+    setTimeout(startNextRound, 3000);
   }
   getDeadPlayerCount() {
     let deadPlayerCount = 0;
@@ -240,9 +251,9 @@ class Direction {
   rad:number;
   deg:number;
   constructor(deg:number) {
-    this.y = Math.cos(Direction.degToRad(deg));
-    this.x = Math.sin(Direction.degToRad(deg));
-    this.rad = Math.atan2(this.x, this.y);
+    this.x = Math.cos(Direction.degToRad(deg));
+    this.y = Math.sin(Direction.degToRad(deg));
+    this.rad = Math.atan2(this.y, this.x);
     this.deg = Direction.radToDeg(this.rad);
   }
   static radToDeg(rad) {
@@ -254,7 +265,8 @@ class Direction {
 }
 
 class Curve {
-  debugLayer: Paper.Layer;
+  curvePainter: CurvePainter;
+  debugOverlay: Paper.Group;
   pos:Paper.Point;
   color:Paper.Color;
   direction:Direction;
@@ -289,16 +301,10 @@ class Curve {
     this.ready = false;
     this.onReadyCallbacks = [];
     this.commandCallbacks = {};
-    this.path = new paper.CompoundPath({
-      strokeColor: this.player.color,
-      fillColor: new paper.Color(0,0,0,0),
-      strokeCap: 'round',
-      strokeWidth: 3,
-      data: {
-        playerId: this.player.id,
-        type: TYPE.curve,
-      }
-    });
+;
+    this.curvePainter = new CurvePainter(paper, this.player.id, this.player.color);
+    this.path = this.curvePainter.path;
+    this.round.curvesGroup.addChild(this.path);
     this.dot = new paper.Path.Circle({
       center: this.pos,
       radius: 4,
@@ -306,6 +312,7 @@ class Curve {
       strokeWidth: 1
     });
 
+    this.curvePainter.startRecording();
     this.startDrawing();
 
     // Listen for events from worker
@@ -323,12 +330,12 @@ class Curve {
           break;
         case WorkerMessageType.PAINT:
           if (DEBUG.devMode) {
-            if (!this.debugLayer) {
-              this.debugLayer = new paper.Layer();
+            if (!this.debugOverlay) {
+              this.debugOverlay = new paper.Group();
             } else {
-              this.debugLayer.removeChildren();
+              this.debugOverlay.removeChildren();
             }
-            this.debugLayer.importJSON(e.data.paperState);
+            this.debugOverlay.importJSON(e.data.paperState);
           }
           break;
       }
@@ -356,22 +363,24 @@ class Curve {
 
   getCommand(callback:(command:curveCommand) => void) {
     const id = this.commandId++;
-    const curves:any[] = [];
+    const curves:Messages_Curve[] = [];
+    const updates:CurveUpdate[] = [];
     for (const curve of this.round.curves) {
       curves.push({
         pos: curve.pos,
         direction: curve.direction,
-        id: curve.player.id
+        id: curve.player.id,
+        updates: curve.curvePainter.recordedData
       });
     }
     this.commandCallbacks[id] = callback;
     
+    const paperState = this.round.curvesGroup;
     this.postMessage({
       type: AppMessageType.UPDATE,
       pos: this.pos,
       direction: this.direction,
       curves: curves,
-      paperState: paper.project.exportJSON(),
       id: id
     });
   }
@@ -385,8 +394,66 @@ class Curve {
     return Math.random() * 300 + 10;
   }
 
+  explosion() {
+    const expandingCircle = (radius: number) => {
+      let circle = new paper.Path.Circle({
+        center: this.pos, radius: radius,
+        strokeColor: this.player.color,
+        strokeWidth: 2,
+        opacity: 1
+      });
+      circle.onFrame = (event) => {
+        circle.strokeWidth = Math.max(0, 2 - Math.pow(event.time * 2, 1.5));
+        circle.opacity = Math.max(0, 1 - event.time * 2);
+        circle.scale(1.0 + Math.pow(event.time, 0.1) * 0.1);
+      };
+      return circle;
+    }
+    let circles = new paper.Group();
+    const initialRadius = 5;
+    circles.addChild(expandingCircle(initialRadius));
+    setTimeout(() => circles.addChild(expandingCircle(initialRadius)), 150);
+    setTimeout(() => circles.addChild(expandingCircle(initialRadius)), 300);
+
+    // Cleanup after a bit, so shit doesn't slow down
+    setTimeout(() => circles.remove(), 1000);
+
+    const rand = (min, max) => Math.random() * (max - min) + min;
+    const randomBit = (angle: number, size: number, speed: number, rotationSpeed: number) => {
+      let rect = new paper.Path.Rectangle({
+        from: this.pos.add([-size / 2, -size / 2]),
+        to: this.pos.add([size / 2, size / 2]),
+        fillColor: this.player.color,
+        opacity: 1
+      });
+
+      rect.onFrame = function (event) {
+        rect.opacity = Math.max(0, 1 - event.time / 2);
+        rect.rotate(rotationSpeed * event.time);
+        rect.translate(new Paper.Point(
+          Math.cos(angle) * speed / Math.exp(event.time / 5),
+          Math.sin(angle) * speed / Math.exp(event.time / 5)
+        ));
+      };
+      return rect;
+    }
+
+    let bits = new paper.Group();
+    for (let i = 0; i < rand(10, 20); i++) {
+      // Send bits in a cone shape, 50% in forwards and 50% in backwards direction
+      const angle = (i % 2) * Math.PI + this.direction.rad + rand(-Math.PI / 3, Math.PI / 3);
+      let r = randomBit(angle, rand(0.5, 3), rand(1, 2), rand(1, 5));
+      bits.addChild(r);
+    }
+    // Cleanup after a bit, so shit doesn't slow down
+    setTimeout(() => bits.remove(), 2000);
+  }
+
   collision() {
     this.round.score(this.player);
+    if (VISUALS.explosions) {
+      this.explosion();
+    }
     this.alive = false;
     this.round.checkRoundEnd();
   }
@@ -404,49 +471,34 @@ class Curve {
       return true;
     }
 
-    // Check for collision with self
-    /*
-      We're collision checking by checking a circle at the tip of the curve,
-      unfortunately, this circle will always collide with the curve itself.
-      To fix this, we duplicate the curve and remove a bit of the tip, then 
-      hittest that instead.
-    */
+    // Grab our last path
     const lastPath = <Paper.Path>this.path.lastChild;
-    if (lastPath.length > this.path.strokeWidth * 1.1) {
-      const pathClone = <Paper.Path>lastPath.clone();
-      // Remove a segment of the tip.
-      pathClone.splitAt(lastPath.length - (this.path.strokeWidth * 1.1)).remove();
-      const hits = pathClone.hitTest(point, {
-        stroke: true,
-        tolerance: this.path.strokeWidth / 2
-      });
-      pathClone.remove();
-      if (hits) {
-        return true;
-      }
-    }
 
-    // Check collision with other curves
-    const hitResults = paper.project.hitTestAll(this.pos, {
+    // Check collision with all curves
+    const hitResult = this.round.curvesGroup.hitTest(this.pos, {
       stroke: true,
       tolerance: this.path.strokeWidth / 2,
       match: (hit) => {
-        // Only care about collision with other curves
         if (hit.item.parent.data.type === TYPE.curve) {
-          // Ignore last path of own curve
           if (hit.location.path === lastPath) {
-            return false;
-          } else {
-            return true;
+            // If it's our own curve, we ignore collisions with the tip.
+            const offset = hit.location.offset;
+            const curOffset = lastPath.length;
+            const diff = curOffset - offset;
+            if (diff <= 0.001) {
+              // Ignore last part of own curve
+              return false;
+            }
           }
+          return true;
         } else {
           return false;
         }
       }
     });
 
-    if (hitResults.length > 0) {
-      return true;;
+    if (hitResult) {
+      return true;
     }
 
     return false;
@@ -455,9 +507,7 @@ class Curve {
   startDrawing() {
     this.draw = true;
     this.collide = true;
-    this.path.addChild(new paper.Path({
-      segments: [this.pos],
-    }));
+    this.curvePainter.startSegment(this.pos);
   }
 
   stopDrawing() {
@@ -466,6 +516,7 @@ class Curve {
   }
 
   update(command:curveCommand) {
+    this.curvePainter.startRecording();
     if (!this.alive) {
       return;
     }
@@ -481,8 +532,6 @@ class Curve {
     if (!this.draw && this.pos.getDistance(lastPath.lastSegment.point) > this.path.strokeWidth * 4) {
       this.startDrawing();
       this.holeSpacing = this.getRandomHoleSpacing();
-      // startDrawing creates a new path, so, reset lastPath ref.
-      lastPath = <Paper.Path>this.path.lastChild;
     }
 
     // Calculate new position
@@ -505,55 +554,10 @@ class Curve {
     if (!this.draw) {
       return;
     }
-    if (command === this.lastCommand && this.lastCommand !== null && lastPath.segments.length > 1) {
-      // If going straight
-      if (command === 0) {
-        // move point instad of adding new one
-        lastPath.lastSegment.remove();
-      }
-  
-      // If curving
-      if ((command === 1 || command === -1) && lastPath.segments.length > 2) {
-        const arcThrough = lastPath.lastSegment.point;
-        lastPath.lastSegment.remove();
-        const path = lastPath.arcTo(arcThrough, this.pos);
-      } else {
-        lastPath.lineTo(this.pos);
-      }
-    } else {
-      lastPath.lineTo(this.pos);
-    }
 
-    this.lastCommand = command;
+    this.curvePainter.addToSegment(this.pos, command);
   }
 }
-
-function vacuumBot() {
-  return function (curve: Curve) {
-    const distance = 40;
-    const collisionPoint = new paper.Point({
-      x: curve.pos.x + (curve.direction.x * distance),
-      y: curve.pos.y + (curve.direction.y * distance)
-    });
-    if (curve.checkCollision(collisionPoint)) {
-      return -1;
-    } else {
-      return 0;
-    }
-  }
-}
-
-function keyboardBot(key1:string, key2:string) {
-  return function (curve: Curve) {
-    if (keyboard.keys[key1] && keyboard.keys[key1].pressed) {
-      return -1;
-    }
-    if (keyboard.keys[key2] && keyboard.keys[key2].pressed) {
-      return 1;
-    }
-    return 0;
-  }
-} 
 
 class Keyboard {
   keys: {[key:string]:{pressed:boolean}} = {};

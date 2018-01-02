@@ -65,7 +65,7 @@ class Artemis extends Bot {
         radius: turnradius - 3.5,
       })).length) {
         // Collision right!
-        command = 1;
+        command = -1;
       }
   
       const leftCheck = this.line(data, turnradius);
@@ -75,7 +75,7 @@ class Artemis extends Bot {
         radius: turnradius - 3.5,
       })).length) {
         // Collision right!
-        command = -1;
+        command = 1;
       }
       
     }
